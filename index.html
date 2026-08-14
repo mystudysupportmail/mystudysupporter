@@ -12,7 +12,7 @@
     <!-- Firebase SDK Modular Scripts -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+      import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyAd3hwZ3FErbFR1j38U2WXIJZ8h8yq-KLc",
@@ -27,7 +27,7 @@
       const db = getFirestore(app);
 
       window.fbDB = db;
-      window.fbMethods = { collection, doc, setDoc, getDocs, onSnapshot, updateDoc };
+      window.fbMethods = { collection, doc, setDoc, getDocs, onSnapshot, updateDoc, deleteDoc };
     </script>
 
     <script>
@@ -128,6 +128,31 @@
         .blur-protection {
             filter: blur(20px) !important;
             transition: filter 0.1s ease;
+        }
+
+        /* --- PDF SINGLE QUESTION RESTRICTED VIEW STYLES --- */
+        .single-question-pdf-container {
+            width: 100%;
+            height: 280px; /* Restrict height so only 1 question is visible */
+            overflow-y: scroll;
+            overflow-x: hidden;
+            position: relative;
+            background: #020617;
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Transparent Overlay to Block Direct Clicks / Pop-outs */
+        .pdf-click-blocker-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: calc(100% - 14px); /* Leaves room for scrollbar */
+            height: 100%;
+            z-index: 15;
+            background: transparent;
         }
     </style>
 </head>
@@ -458,9 +483,12 @@
                 </button>
             </div>
 
-            <!-- ADMIN MATERIAL/VIDEO UPLOAD SECTION -->
+            <!-- ADMIN MATERIAL/VIDEO UPLOAD SECTION WITH EDIT/DELETE CAPABILITY -->
             <div class="glass-card rounded-2xl p-6 border border-indigo-800/60 space-y-4">
-                <h3 class="text-base font-bold text-white flex items-center"><i class="fa-solid fa-cloud-arrow-up text-indigo-400 mr-2"></i> Manage PDF / Video Materials</h3>
+                <h3 class="text-base font-bold text-white flex items-center"><i class="fa-solid fa-cloud-arrow-up text-indigo-400 mr-2"></i> Manage PDF / Video Materials (Add, Edit & Delete)</h3>
+                
+                <input type="hidden" id="admin-material-edit-id" value="-1">
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Material Type</label>
@@ -478,9 +506,19 @@
                     <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">PDF / Video Link URL</label>
                     <input type="url" id="admin-material-url" placeholder="https://drive.google.com/... or https://youtube.com/embed/..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
                 </div>
-                <button onclick="app.uploadMaterial()" class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-lg transition">
-                    <i class="fa-solid fa-plus-circle mr-2"></i>Publish Material To User Portal
-                </button>
+                <div class="flex space-x-2">
+                    <button onclick="app.uploadMaterial()" class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-lg transition">
+                        <i class="fa-solid fa-save mr-2"></i>Save / Publish Material
+                    </button>
+                    <button onclick="app.resetMaterialForm()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition">
+                        Cancel / Clear
+                    </button>
+                </div>
+
+                <!-- Live Uploaded Material Management List -->
+                <hr class="border-slate-800 my-4">
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Uploaded Materials List (Edit or Delete anytime)</h4>
+                <div id="admin-material-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -521,9 +559,9 @@
 
     </main>
 
-    <!-- SECURE PDF / VIDEO VIEWER MODAL -->
+    <!-- SECURE SINGLE QUESTION PDF / VIDEO VIEWER MODAL -->
     <div id="pdf-viewer-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-2 md:p-6 hidden">
-        <div id="pdf-modal-card" class="glass-card max-w-5xl w-full h-[90vh] rounded-2xl border border-emerald-500/50 flex flex-col relative overflow-hidden shadow-2xl">
+        <div id="pdf-modal-card" class="glass-card max-w-4xl w-full rounded-2xl border border-emerald-500/50 flex flex-col relative overflow-hidden shadow-2xl">
             <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
                 <div class="flex items-center space-x-3">
                     <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
@@ -531,7 +569,7 @@
                     </span>
                     <div>
                         <h3 id="pdf-modal-title" class="text-sm font-extrabold text-white">Protected Study Material</h3>
-                        <p class="text-[10px] text-emerald-400 font-semibold">Copy, Print & Screenshot Disabled</p>
+                        <p class="text-[10px] text-emerald-400 font-semibold">Single Question View • Direct Clicks & Pop-out Disabled</p>
                     </div>
                 </div>
                 <button onclick="app.closePDFViewerModal()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-bold transition">
@@ -539,11 +577,12 @@
                 </button>
             </div>
 
-            <div class="flex-grow relative bg-slate-950 flex items-center justify-center overflow-hidden" id="pdf-content-container">
-                <div class="absolute inset-0 pointer-events-none z-20 flex items-center justify-center opacity-10 select-none">
-                    <span class="text-4xl md:text-6xl font-black text-white transform -rotate-45">RESTRICTED - NO SCREENSHOT</span>
+            <div class="p-4 relative bg-slate-950 flex flex-col items-center justify-center">
+                <!-- Single Question Container with Restricted Height & Blocker -->
+                <div class="single-question-pdf-container" id="pdf-frame-wrapper">
+                    <div class="pdf-click-blocker-overlay"></div>
                 </div>
-                <div id="pdf-frame-wrapper" class="w-full h-full relative"></div>
+                <p class="text-[11px] text-slate-400 mt-2"><i class="fa-solid fa-scroll mr-1 text-indigo-400"></i> Use the side scrollbar to scroll through questions one by one.</p>
             </div>
         </div>
     </div>
@@ -722,6 +761,10 @@
                     snapshot.forEach((docSnap) => {
                         this.materials.push({ id: docSnap.id, ...docSnap.data() });
                     });
+
+                    if (this.currentUser && this.currentUser.isAdmin) {
+                        this.renderAdminMaterialsList();
+                    }
                 });
 
                 this.checkSession();
@@ -1116,7 +1159,7 @@
                 document.getElementById('ai-modal').classList.add('hidden');
             }
 
-            /* --- PROTECTED PDF / VIDEO VIEWER MODAL LOGIC --- */
+            /* --- PROTECTED SINGLE QUESTION PDF / VIDEO VIEWER MODAL LOGIC --- */
             openPDFViewerModal() {
                 const modal = document.getElementById('pdf-viewer-modal');
                 const wrapper = document.getElementById('pdf-frame-wrapper');
@@ -1124,6 +1167,7 @@
 
                 if (this.materials.length === 0) {
                     wrapper.innerHTML = `
+                        <div class="pdf-click-blocker-overlay"></div>
                         <div class="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
                             <i class="fa-solid fa-folder-open text-4xl text-indigo-400"></i>
                             <p class="text-slate-300 font-bold text-sm">No Protected Study PDF/Videos Uploaded Yet!</p>
@@ -1131,13 +1175,12 @@
                         </div>
                     `;
                 } else {
-                    const activeMaterial = this.materials[0]; // Show latest uploaded material
+                    const activeMaterial = this.materials[0]; // Active material
                     title.innerText = activeMaterial.title || "Protected Study Material";
 
                     let srcUrl = activeMaterial.url;
-                    
+
                     if (activeMaterial.type === 'video') {
-                        // YouTube Embed Safe Handling
                         if (srcUrl.includes('watch?v=')) {
                             srcUrl = srcUrl.replace('watch?v=', 'embed/');
                         }
@@ -1145,12 +1188,13 @@
                             <iframe src="${srcUrl}?autoplay=1&modestbranding=1&rel=0" class="w-full h-full border-0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
                         `;
                     } else {
-                        // Google Drive PDF Embed / Standard PDF Viewer (No Download Toolbar)
+                        // Single Question Restricted Embed View (toolbar off, navpanes off)
                         if (srcUrl.includes('/view')) {
                             srcUrl = srcUrl.replace('/view', '/preview');
                         }
                         wrapper.innerHTML = `
-                            <iframe src="${srcUrl}#toolbar=0&navpanes=0&scrollbar=0" class="w-full h-full border-0"></iframe>
+                            <div class="pdf-click-blocker-overlay"></div>
+                            <iframe src="${srcUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH" class="w-full h-[1200px] border-0" tabindex="-1"></iframe>
                         `;
                     }
                 }
@@ -1160,34 +1204,102 @@
 
             closePDFViewerModal() {
                 document.getElementById('pdf-viewer-modal').classList.add('hidden');
-                document.getElementById('pdf-frame-wrapper').innerHTML = '';
+                document.getElementById('pdf-frame-wrapper').innerHTML = '<div class="pdf-click-blocker-overlay"></div>';
             }
 
-            /* --- ADMIN MATERIAL UPLOAD METHOD --- */
+            /* --- ADMIN MATERIAL UPLOAD, EDIT & DELETE METHOD --- */
             async uploadMaterial() {
                 const type = document.getElementById('admin-material-type').value;
                 const title = document.getElementById('admin-material-title').value.trim();
                 const url = document.getElementById('admin-material-url').value.trim();
+                const editId = document.getElementById('admin-material-edit-id').value;
 
                 if (!title || !url) {
                     alert("Please provide both Title and URL link.");
                     return;
                 }
 
-                const docId = "mat_" + Date.now();
-                const newMaterial = {
-                    type,
-                    title,
-                    url,
-                    createdAt: new Date().toISOString()
-                };
-
                 const { doc, setDoc } = window.fbMethods;
-                await setDoc(doc(window.fbDB, "materials", docId), newMaterial);
 
-                this.showNotification("Study Material/Video Published Successfully!", "emerald");
+                if (editId === "-1") {
+                    // Save New Document
+                    const docId = "mat_" + Date.now();
+                    const newMaterial = {
+                        type,
+                        title,
+                        url,
+                        createdAt: new Date().toISOString()
+                    };
+                    await setDoc(doc(window.fbDB, "materials", docId), newMaterial);
+                    this.showNotification("Study Material Published Successfully!", "emerald");
+                } else {
+                    // Update Existing Document
+                    const docRef = doc(window.fbDB, "materials", editId);
+                    await setDoc(docRef, {
+                        type,
+                        title,
+                        url,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                    this.showNotification("Study Material Updated Successfully!", "indigo");
+                }
+
+                this.resetMaterialForm();
+            }
+
+            resetMaterialForm() {
+                document.getElementById('admin-material-edit-id').value = "-1";
                 document.getElementById('admin-material-title').value = '';
                 document.getElementById('admin-material-url').value = '';
+            }
+
+            renderAdminMaterialsList() {
+                const listEl = document.getElementById('admin-material-list');
+                if (!listEl) return;
+
+                if (this.materials.length === 0) {
+                    listEl.innerHTML = `<p class="text-xs text-slate-500 italic">No study links added yet.</p>`;
+                    return;
+                }
+
+                listEl.innerHTML = this.materials.map(m => `
+                    <div class="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between gap-3 text-xs">
+                        <div class="overflow-hidden">
+                            <span class="px-2 py-0.5 rounded font-bold uppercase ${m.type === 'pdf' ? 'bg-indigo-950 text-indigo-400 border border-indigo-800' : 'bg-rose-950 text-rose-400 border border-rose-800'}">
+                                ${m.type}
+                            </span>
+                            <strong class="text-white ml-2">${m.title}</strong>
+                            <div class="text-[10px] text-slate-500 truncate mt-0.5">${m.url}</div>
+                        </div>
+                        <div class="flex items-center space-x-2 flex-shrink-0">
+                            <button onclick="app.editMaterial('${m.id}')" class="px-2.5 py-1 bg-amber-600/20 text-amber-300 hover:bg-amber-600 hover:text-white rounded border border-amber-800 font-bold transition">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit
+                            </button>
+                            <button onclick="app.deleteMaterial('${m.id}')" class="px-2.5 py-1 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded border border-rose-800 font-bold transition">
+                                <i class="fa-solid fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            editMaterial(id) {
+                const item = this.materials.find(m => m.id === id);
+                if (!item) return;
+
+                document.getElementById('admin-material-edit-id').value = item.id;
+                document.getElementById('admin-material-type').value = item.type;
+                document.getElementById('admin-material-title').value = item.title;
+                document.getElementById('admin-material-url').value = item.url;
+                this.showNotification("Loaded link for editing", "amber");
+            }
+
+            async deleteMaterial(id) {
+                if (confirm("Are you sure you want to permanently delete this PDF/Video link?")) {
+                    const { doc, deleteDoc } = window.fbMethods;
+                    await deleteDoc(doc(window.fbDB, "materials", id));
+                    this.showNotification("Link deleted successfully!", "rose");
+                }
             }
 
             setStudyMode(mode) {
@@ -1352,6 +1464,8 @@
                 totalEl.innerText = total;
                 pendingEl.innerText = pending;
                 activeEl.innerText = active;
+
+                this.renderAdminMaterialsList();
 
                 tableBody.innerHTML = this.users.map((u, idx) => `
                     <tr class="hover:bg-slate-900/60 transition">
