@@ -110,9 +110,28 @@
         .ai-glow {
             box-shadow: 0 0 25px rgba(99, 102, 241, 0.25);
         }
+
+        /* Screenshot / Print Protection Overlay */
+        @media print {
+            body { display: none !important; }
+        }
+        
+        .secure-content {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        .blur-protection {
+            filter: blur(20px) !important;
+            transition: filter 0.1s ease;
+        }
     </style>
 </head>
-<body class="min-h-screen text-slate-100 flex flex-col justify-between overflow-x-hidden antialiased">
+<body class="min-h-screen text-slate-100 flex flex-col justify-between overflow-x-hidden antialiased secure-content">
 
     <div class="watermark">MY STUDY SUPPORTER - SECURED EXAM PORTAL</div>
 
@@ -331,11 +350,15 @@
                     <p class="text-xs text-slate-400 mt-1">Chapter-wise preparation with AI Explanations & Real Exam Simulator</p>
                 </div>
 
-                <div class="flex items-center space-x-3 w-full md:w-auto">
-                    <button id="btn-mode-practice" onclick="app.setStudyMode('practice')" class="flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-lg transition">
+                <!-- Study with PDF, Practice & Mock Test Controls -->
+                <div class="flex flex-wrap items-center space-x-2 md:space-x-3 w-full md:w-auto">
+                    <button id="btn-mode-pdf" onclick="app.openPDFViewerModal()" class="flex-1 md:flex-none px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg hover:brightness-110 transition flex items-center justify-center">
+                        <i class="fa-solid fa-file-pdf mr-2"></i>Study with PDF
+                    </button>
+                    <button id="btn-mode-practice" onclick="app.setStudyMode('practice')" class="flex-1 md:flex-none px-4 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-lg transition flex items-center justify-center">
                         <i class="fa-solid fa-book-open mr-2"></i>Chapter Practice
                     </button>
-                    <button id="btn-mode-mock" onclick="app.startMockTest()" class="flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg hover:brightness-110 transition">
+                    <button id="btn-mode-mock" onclick="app.startMockTest()" class="flex-1 md:flex-none px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg hover:brightness-110 transition flex items-center justify-center">
                         <i class="fa-solid fa-stopwatch mr-2"></i>Start Mock Test (509 Mins)
                     </button>
                 </div>
@@ -435,6 +458,31 @@
                 </button>
             </div>
 
+            <!-- ADMIN MATERIAL/VIDEO UPLOAD SECTION -->
+            <div class="glass-card rounded-2xl p-6 border border-indigo-800/60 space-y-4">
+                <h3 class="text-base font-bold text-white flex items-center"><i class="fa-solid fa-cloud-arrow-up text-indigo-400 mr-2"></i> Manage PDF / Video Materials</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Material Type</label>
+                        <select id="admin-material-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
+                            <option value="pdf">Protected PDF Document</option>
+                            <option value="video">Study Video Stream</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Material Title</label>
+                        <input type="text" id="admin-material-title" placeholder="e.g. Complete Aadhaar Guide 2026" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">PDF / Video Link URL</label>
+                    <input type="url" id="admin-material-url" placeholder="https://drive.google.com/... or https://youtube.com/embed/..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none">
+                </div>
+                <button onclick="app.uploadMaterial()" class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-lg transition">
+                    <i class="fa-solid fa-plus-circle mr-2"></i>Publish Material To User Portal
+                </button>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="glass-card p-4 rounded-2xl border border-slate-800">
                     <div class="text-xs text-slate-400">Total Registered Users</div>
@@ -472,6 +520,33 @@
         </section>
 
     </main>
+
+    <!-- SECURE PDF / VIDEO VIEWER MODAL -->
+    <div id="pdf-viewer-modal" class="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-2 md:p-6 hidden">
+        <div id="pdf-modal-card" class="glass-card max-w-5xl w-full h-[90vh] rounded-2xl border border-emerald-500/50 flex flex-col relative overflow-hidden shadow-2xl">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80">
+                <div class="flex items-center space-x-3">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </span>
+                    <div>
+                        <h3 id="pdf-modal-title" class="text-sm font-extrabold text-white">Protected Study Material</h3>
+                        <p class="text-[10px] text-emerald-400 font-semibold">Copy, Print & Screenshot Disabled</p>
+                    </div>
+                </div>
+                <button onclick="app.closePDFViewerModal()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-bold transition">
+                    <i class="fa-solid fa-xmark mr-1"></i> Close
+                </button>
+            </div>
+
+            <div class="flex-grow relative bg-slate-950 flex items-center justify-center overflow-hidden" id="pdf-content-container">
+                <div class="absolute inset-0 pointer-events-none z-20 flex items-center justify-center opacity-10 select-none">
+                    <span class="text-4xl md:text-6xl font-black text-white transform -rotate-45">RESTRICTED - NO SCREENSHOT</span>
+                </div>
+                <div id="pdf-frame-wrapper" class="w-full h-full relative"></div>
+            </div>
+        </div>
+    </div>
 
     <div id="ai-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
         <div class="glass-card max-w-lg w-full rounded-2xl p-6 border border-indigo-500/50 ai-glow relative space-y-4 animate-scaleUp">
@@ -589,6 +664,7 @@
         class AppEngine {
             constructor() {
                 this.users = [];
+                this.materials = [];
                 this.adminCreds = {
                     email: "rehanpathan0989@gmail.com",
                     pass: "Rehan@1336"
@@ -610,7 +686,6 @@
                 this.setupAdminTrigger();
                 this.renderChapterTabs();
 
-                // Wait for Firebase to attach
                 const checkFB = setInterval(() => {
                     if (window.fbDB && window.fbMethods) {
                         clearInterval(checkFB);
@@ -621,6 +696,8 @@
 
             initFirebaseListeners() {
                 const { collection, onSnapshot } = window.fbMethods;
+                
+                // User Accounts Listener
                 onSnapshot(collection(window.fbDB, "users"), (snapshot) => {
                     this.users = [];
                     snapshot.forEach((docSnap) => {
@@ -639,20 +716,46 @@
                     }
                 });
 
+                // PDF & Video Study Materials Listener
+                onSnapshot(collection(window.fbDB, "materials"), (snapshot) => {
+                    this.materials = [];
+                    snapshot.forEach((docSnap) => {
+                        this.materials.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                });
+
                 this.checkSession();
             }
 
             setupSecurity() {
+                // Anti-Copy, Anti-Print, Anti-Inspect, Anti-Screenshot Protections
                 document.addEventListener('contextmenu', (e) => e.preventDefault());
+
                 document.addEventListener('keydown', (e) => {
                     if (
                         e.key === 'F12' || 
                         (e.ctrlKey && (e.key === 'c' || e.key === 'C' || e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P')) ||
-                        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j'))
+                        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+                        (e.key === 'PrintScreen')
                     ) {
                         e.preventDefault();
-                        this.showNotification("Security Alert: Content copying is strictly disabled!", "rose");
+                        this.showNotification("Security Alert: Screen Recording/Copying Disabled!", "rose");
                         return false;
+                    }
+                });
+
+                // Anti-Screenshot Window Blur Hook
+                window.addEventListener('blur', () => {
+                    const modalWrapper = document.getElementById('pdf-modal-card');
+                    if (modalWrapper) {
+                        modalWrapper.classList.add('blur-protection');
+                    }
+                });
+
+                window.addEventListener('focus', () => {
+                    const modalWrapper = document.getElementById('pdf-modal-card');
+                    if (modalWrapper) {
+                        modalWrapper.classList.remove('blur-protection');
                     }
                 });
             }
@@ -1013,6 +1116,80 @@
                 document.getElementById('ai-modal').classList.add('hidden');
             }
 
+            /* --- PROTECTED PDF / VIDEO VIEWER MODAL LOGIC --- */
+            openPDFViewerModal() {
+                const modal = document.getElementById('pdf-viewer-modal');
+                const wrapper = document.getElementById('pdf-frame-wrapper');
+                const title = document.getElementById('pdf-modal-title');
+
+                if (this.materials.length === 0) {
+                    wrapper.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
+                            <i class="fa-solid fa-folder-open text-4xl text-indigo-400"></i>
+                            <p class="text-slate-300 font-bold text-sm">No Protected Study PDF/Videos Uploaded Yet!</p>
+                            <p class="text-slate-500 text-xs">Admin will upload official study PDF and Video lectures shortly.</p>
+                        </div>
+                    `;
+                } else {
+                    const activeMaterial = this.materials[0]; // Show latest uploaded material
+                    title.innerText = activeMaterial.title || "Protected Study Material";
+
+                    let srcUrl = activeMaterial.url;
+                    
+                    if (activeMaterial.type === 'video') {
+                        // YouTube Embed Safe Handling
+                        if (srcUrl.includes('watch?v=')) {
+                            srcUrl = srcUrl.replace('watch?v=', 'embed/');
+                        }
+                        wrapper.innerHTML = `
+                            <iframe src="${srcUrl}?autoplay=1&modestbranding=1&rel=0" class="w-full h-full border-0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                        `;
+                    } else {
+                        // Google Drive PDF Embed / Standard PDF Viewer (No Download Toolbar)
+                        if (srcUrl.includes('/view')) {
+                            srcUrl = srcUrl.replace('/view', '/preview');
+                        }
+                        wrapper.innerHTML = `
+                            <iframe src="${srcUrl}#toolbar=0&navpanes=0&scrollbar=0" class="w-full h-full border-0"></iframe>
+                        `;
+                    }
+                }
+
+                modal.classList.remove('hidden');
+            }
+
+            closePDFViewerModal() {
+                document.getElementById('pdf-viewer-modal').classList.add('hidden');
+                document.getElementById('pdf-frame-wrapper').innerHTML = '';
+            }
+
+            /* --- ADMIN MATERIAL UPLOAD METHOD --- */
+            async uploadMaterial() {
+                const type = document.getElementById('admin-material-type').value;
+                const title = document.getElementById('admin-material-title').value.trim();
+                const url = document.getElementById('admin-material-url').value.trim();
+
+                if (!title || !url) {
+                    alert("Please provide both Title and URL link.");
+                    return;
+                }
+
+                const docId = "mat_" + Date.now();
+                const newMaterial = {
+                    type,
+                    title,
+                    url,
+                    createdAt: new Date().toISOString()
+                };
+
+                const { doc, setDoc } = window.fbMethods;
+                await setDoc(doc(window.fbDB, "materials", docId), newMaterial);
+
+                this.showNotification("Study Material/Video Published Successfully!", "emerald");
+                document.getElementById('admin-material-title').value = '';
+                document.getElementById('admin-material-url').value = '';
+            }
+
             setStudyMode(mode) {
                 const practice = document.getElementById('container-practice');
                 const mock = document.getElementById('container-mock');
@@ -1022,8 +1199,8 @@
                 if (mode === 'practice') {
                     practice.classList.remove('hidden');
                     mock.classList.add('hidden');
-                    btnPrac.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-lg transition";
-                    btnMock.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition";
+                    btnPrac.className = "flex-1 md:flex-none px-4 py-2.5 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-lg transition flex items-center justify-center";
+                    btnMock.className = "flex-1 md:flex-none px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition flex items-center justify-center";
                     clearInterval(this.mockTimerInterval);
                 }
             }
@@ -1037,8 +1214,8 @@
                 practice.classList.add('hidden');
                 mock.classList.remove('hidden');
 
-                btnMock.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-sm bg-amber-500 text-white shadow-lg transition";
-                btnPrac.className = "flex-1 md:flex-none px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition";
+                btnMock.className = "flex-1 md:flex-none px-4 py-2.5 rounded-xl font-bold text-sm bg-amber-500 text-white shadow-lg transition flex items-center justify-center";
+                btnPrac.className = "flex-1 md:flex-none px-4 py-2.5 rounded-xl font-bold text-sm bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition flex items-center justify-center";
 
                 this.mockAnswers = {};
                 this.mockTimeLeft = 509 * 60;
